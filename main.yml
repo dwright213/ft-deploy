@@ -1,0 +1,80 @@
+---
+- hosts: all
+  remote_user: pi
+  gather_facts: false
+  vars:
+    - packages:
+      - git
+      - tig 
+      - python-pip 
+      # - GraphicsMagick++-config
+      - fish
+
+    - pis:
+      - client:
+        ip: 192.168.0.101
+        name: client.ft
+
+      - server:
+        ip: 192.168.0.108
+        name: server.ft
+
+
+  tasks:
+  
+  - name: Set up ssh keys
+    authorized_key:
+      user: pi
+      state: present
+      key: '{{ item }}'
+    with_file:
+      - public_keys/dwright
+    tags: ['basics', 'ssh', 'keys']
+
+  - name: replace hosts file
+    become: yes
+    template:
+      src: ./templates/hosts
+      dest: /etc/hosts
+      mode: 0644
+    tags: ['basics', 'hosts', 'hosts_file']
+
+
+  - name: Upgrade what needs upgraded
+    become: yes
+    apt:
+      update_cache: yes
+      name: "*"
+      state: latest
+    tags: ['basics', 'apt', 'upgrade']
+
+  - name: Update repositories cache and install some packages
+    become: yes
+    apt:
+      state: latest
+      name: '{{ packages }}'
+      install_recommends: yes
+    tags: ['basics', 'apt', 'install', 'packages']
+
+
+  - name: change pi user's shell to fish
+    become: yes
+    user:
+      name: pi
+      shell: /usr/bin/fish
+    tags: ['basics', 'shell', 'chsh']
+
+  - lineinfile:
+      path: /boot/config.txt
+      line: 'dtoverlay=pi3-disable-wifi'
+    tags: ['basics', 'wifi', 'disable_wifi']
+
+
+  - name: Synchronization of src on the control machine to dest on the remote hosts
+    synchronize:
+      src: ../flaschen-taschen
+      dest: /home/pi/src/
+      rsync_opts:
+        - "--exclude=.git"
+    tags: ['basics', 'rsync', 'code_push']
+
