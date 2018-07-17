@@ -1,1 +1,10 @@
+
+# Macintrash
+.DS_Store
+.AppleDouble
+.LSOverride
+._*
+
+# Security
 public_keys/*
+
