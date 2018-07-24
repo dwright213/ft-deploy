@@ -13,6 +13,6 @@ Uses Ansible because I come from devops.
 #### Requirements: 
 Probably works with any Pi that Flaschen Taschen will run on, but here is what I'm using in my setup:
 
-Two Raspberry Pi 3 B+ boards, connected through a gigabit switch to my router, one named "client", one named "server". Client exists to handle heavier graphic/video processing and leave server doing it's thing if it dies. 
+Two Raspberry Pi 3 B+ boards, connected through a gigabit switch to my router, one named "client", one named "server". Client exists to handle heavier graphic/video processing and if it dies, leave server doing it's thing. Server runs Raspbian Lite, Client runs Desktop Raspbian.
 
 

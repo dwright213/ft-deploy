@@ -7,7 +7,6 @@
       - git
       - tig 
       - python-pip 
-      # - GraphicsMagick++-config
       - fish
 
     - pis:
@@ -16,12 +15,13 @@
         name: client.ft
 
       - server:
-        ip: 192.168.0.108
+        ip: 192.168.0.105
         name: server.ft
 
 
   tasks:
-  
+
+# basics
   - name: Set up ssh keys
     authorized_key:
       user: pi
@@ -31,16 +31,7 @@
       - public_keys/dwright
     tags: ['basics', 'ssh', 'keys']
 
-  - name: replace hosts file
-    become: yes
-    template:
-      src: ./templates/hosts
-      dest: /etc/hosts
-      mode: 0644
-    tags: ['basics', 'hosts', 'hosts_file']
-
-
-  - name: Upgrade what needs upgraded
+  - name: Update and upgrade what needs upgraded
     become: yes
     apt:
       update_cache: yes
@@ -48,14 +39,13 @@
       state: latest
     tags: ['basics', 'apt', 'upgrade']
 
-  - name: Update repositories cache and install some packages
+  - name: Install some packages
     become: yes
     apt:
       state: latest
       name: '{{ packages }}'
       install_recommends: yes
     tags: ['basics', 'apt', 'install', 'packages']
-
 
   - name: change pi user's shell to fish
     become: yes
@@ -64,17 +54,72 @@
       shell: /usr/bin/fish
     tags: ['basics', 'shell', 'chsh']
 
-  - lineinfile:
+# network  
+  - name: rename pi
+    become: yes
+    template:
+      src: ./templates/hostname
+      dest: /etc/hostname
+      mode: 0644
+    tags: ['network', 'hosts', 'hostname']
+
+  - name: add new name(s) to hosts file
+    become: yes
+    template:
+      src: ./templates/hosts
+      dest: /etc/hosts
+      mode: 0644
+    tags: ['network', 'hosts']
+
+  - name: disable wifi
+    become: yes
+    lineinfile:
       path: /boot/config.txt
       line: 'dtoverlay=pi3-disable-wifi'
-    tags: ['basics', 'wifi', 'disable_wifi']
+    tags: ['network', 'wifi', 'disable_wifi']
 
 
-  - name: Synchronization of src on the control machine to dest on the remote hosts
+#code pushing
+  - name: Push current FT code out to RPi(s)
     synchronize:
       src: ../flaschen-taschen
       dest: /home/pi/src/
       rsync_opts:
         - "--exclude=.git"
-    tags: ['basics', 'rsync', 'code_push']
+    tags: ['code', 'rsync', 'push']
+
+  - name: recompile our code
+    make:
+      chdir: ~/src/flaschen-taschen/server
+      params:
+        FT_BACKEND: ft
+        always-make: true
+        all: true
+    notify: 'fresh code'
+    tags: ['code', 'make']
+
+#other
+  - name: add python script to monitor temperature, for testing
+    template:
+      src: ./templates/temp_mon.py
+      dest: /home/pi/src/temp_mon.py
+      mode: 0644
+    tags: ['other', 'temp']
+
+
+
+  handlers:
+  
+  #code
+  - name: Kill ft-server
+    become: yes
+    action: command pkill -f ft-server
+    ignore_errors: True
+    listen: 'fresh code'
+
+  - name: Start ft-server again
+    become: yes
+    action: command /home/pi/src/flaschen-taschen/server/ft-server -d
+    listen: 'fresh code'
+
 
